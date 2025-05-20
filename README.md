@@ -1,5 +1,5 @@
 # Jenkins Pipeline con Parametro 
-### Descrizione:
+## Descrizione:
 Questa pipeline Jenkins utilizza un parametro chiamato `ENVIRONMENT` per scegliere tra due ambienti: `DEVELOPMENT` e `PRODUCTION`.
 ---
 
@@ -11,11 +11,14 @@ Questa pipeline Jenkins utilizza un parametro chiamato `ENVIRONMENT` per sceglie
    
 2. **Esecuzione della logica condizionale**: Dopo aver selezionato l'ambiente, la pipeline esegue uno script che verifica il valore del parametro `ENVIRONMENT`. 
    - Se l'utente ha scelto `DEVELOPMENT`, verrà stampato il messaggio:  
-     `Environment selected: DEVELOPMENT`
+     ```Environment selected: DEVELOPMENT```
    - Se l'utente ha scelto `PRODUCTION`, verrà stampato il messaggio:  
-     `Environment selected: PRODUCTION`
+     ```Environment selected: PRODUCTION```
 
 3. **Output**: A seconda del valore scelto, la pipeline stampa a schermo il messaggio relativo all'ambiente selezionato
+
+
+
 
 ## Come utilizzare la pipeline
 
