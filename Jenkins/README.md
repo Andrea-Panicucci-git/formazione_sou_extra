@@ -1,9 +1,12 @@
 # Jenkins Pipeline con Parametro 
+
 ## Descrizione:
+
 Questa pipeline Jenkins utilizza un parametro chiamato `ENVIRONMENT` per scegliere tra due ambienti: `DEVELOPMENT` e `PRODUCTION`.
+
 ---
 
-## Come funziona
+## Come funziona:
 
 1. **Definizione del parametro**: La pipeline chiede all'utente di selezionare un ambiente all'inizio della build. Le opzioni sono:
    - `DEVELOPMENT`
