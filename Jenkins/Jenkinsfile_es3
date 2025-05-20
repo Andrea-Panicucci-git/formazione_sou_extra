@@ -13,7 +13,7 @@ pipeline {
                 expression { params.ENVIRONMENT == 'DEVELOPMENT' }
             }
             steps {
-                echo "Esecuzione ambiente DEVELOPMENT"
+                echo "Scegli ambiente DEVELOPMENT"
                 
             }
         }
@@ -23,7 +23,7 @@ pipeline {
                 expression { params.ENVIRONMENT == 'PRODUCTION' }
             }
             steps {
-                echo "Esecuzione ambiente PRODUCTION"
+                echo "Scegli ambiente PRODUCTION"
                 
             }
         }
