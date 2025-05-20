@@ -27,6 +27,7 @@ Questa pipeline Jenkins utilizza un parametro chiamato `ENVIRONMENT` per sceglie
 
 1. Crea un nuovo job di tipo Pipeline in Jenkins.
 2. Incolla il codice della pipeline nel campo "Pipeline Script" del job.
-3. Quando avvii la build, clicca su "Build with Parameters".
-4. Nella finestra che appare, seleziona l'ambiente desiderato (DEVELOPMENT o PRODUCTION).
-5. Clicca su "Build" per avviare la pipeline.
+3. Configura il job con "Questo progetto è parametrizzato" --> "Aggiungi parametri" e salva.
+4. Clicca su "Compila" per avviare la pipeline.
+5. Nella finestra che appare, seleziona l'ambiente desiderato (DEVELOPMENT o PRODUCTION).
+6. Attendi l'output del terminale.
