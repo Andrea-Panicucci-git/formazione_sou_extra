@@ -1,4 +1,8 @@
 fruit:
   apple:
     macintosh:
+<<<<<<< HEAD
   pear:
+=======
+  pear:
+>>>>>>> origin/develop
