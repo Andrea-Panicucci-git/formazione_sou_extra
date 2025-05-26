@@ -32,8 +32,8 @@ Di conseguenza, genera un conflitto perché non sa quale versione scegliere.
 
 Esegui:
 ```
-git checkout master
-git merge devel
+git checkout origin/main
+git merge develop
 ```
 Se le differenze di indentazione sono rilevanti, Git segnalerà conflitti su Esercizio_n4.yaml.
 
