@@ -24,6 +24,4 @@ L'obiettivo di questo esercizio è dimostrare **due modalità diverse di montagg
 
 ---
 
-```
-<img width="578" alt="Screenshot 2025-06-05 alle 16 23 44" src="https://github.com/user-attachments/assets/0816657c-fb23-4bf6-824d-490df342b4ca" />
-```
+
