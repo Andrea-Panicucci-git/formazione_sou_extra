@@ -1,0 +1,121 @@
+---
+- name: Verifica e installa Jenkins se non presente (per Ubuntu)
+  hosts: all
+  become: yes
+  tasks:
+
+
+    - name: Aggiorna la cache dei pacchetti APT
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Installa dipendenze per l'aggiunta di repository APT
+      apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Aggiungi la chiave GPG di Docker
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Aggiungi repository Docker
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release | lower }} stable"
+        state: present
+        filename: docker
+
+    - name: Aggiorna la cache dopo l'aggiunta del repo Docker
+      apt:
+        update_cache: yes
+
+    - name: Installa Docker Engine
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+
+    - name: Avvia e abilita Docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Aggiungi l'utente corrente al gruppo docker (opzionale)
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+    - name: Aggiorna la cache dei pacchetti APT
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Installa Java 17
+      apt:
+        name: openjdk-17-jdk
+        state: present
+
+
+    - name: Verifica se kind è già installato
+      stat:
+        path: /usr/local/bin/kind
+      register: kind_stat
+
+    - name: Scarica kind (se non già installato)
+      get_url:
+        url: https://kind.sigs.k8s.io/dl/v0.22.0/kind-linux-amd64
+        dest: /usr/local/bin/kind
+        mode: '0755'
+      when: not kind_stat.stat.exists
+
+
+    - name: Check whether kubectl is installed
+      stat:
+        path: /usr/local/bin/kubectl
+      register: kubectl_exists
+
+    - name: Search for latest kubectl release
+      uri:
+        url: https://cdn.dl.k8s.io/release/stable.txt
+        return_content: true
+      register: kubectl_ver_response
+      when: not kubectl_exists.stat.exists
+
+    - name: Download/Install kubectl
+      get_url:
+        url: "https://dl.k8s.io/release/{{ kubectl_ver_response.content }}/bin/linux/amd64/kubectl"
+        dest: /usr/local/bin/kubectl
+        mode: 0755
+        group: root
+        owner: root
+      when: not kubectl_exists.stat.exists
+
+    - name : Installa i pacchetti NFS 
+      apt:
+        name: 
+          - nfs-kernel-server 
+        state: present 
+        update_cache: yes
+    - name: Crea directory condivisa 
+      file: 
+        path: /srv/nfs
+        state: directory 
+        mode: '0777'
+    - name: Configura export NFS
+      copy:
+        dest: /etc/exports
+        content: "/srv/nfs 192.168.56.0/24(rw,sync,no_subtree_check,no_root_squash)"
+    - name: Riavvio nfs-server
+      service:
+        name: nfs-kernel-server
+        state: restarted
+        enabled: true 
