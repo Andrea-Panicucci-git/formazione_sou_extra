@@ -1,0 +1,17 @@
+---
+- name: Installazione o rimozione pacchetti
+  hosts: all
+  become: true
+  vars:
+    packages:
+      vim: present
+      nano: absent
+      git: present
+
+  tasks:
+    - name: Gestione pacchetti
+      ansible.builtin.package:
+        name: "{{ item.key }}" # Pacchetto 
+        state: "{{ item.value }}" # Stato del pacchetto 
+      loop: "{{ packages | dict2items }}" #trasforma un dizionario in una lista di oggetti con proprietà chiave e valore 
+

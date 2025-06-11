@@ -1,0 +1,33 @@
+---
+- name: Creazione utenti dal dizionario
+  hosts: all
+  become: true
+  vars:
+    users:
+      - name: alice
+        shell: /bin/bash
+        group: developers
+        home: /home/alice
+      - name: bob
+        shell: /bin/zsh
+        group: admins
+        home: /home/bob
+
+  tasks:
+    - name: Assicurarsi che il gruppo esista
+      ansible.builtin.group:
+        name: "{{ item.group }}"
+        state: present
+      loop: "{{ users }}"
+      loop_control:
+        label: "{{ item.group }}"
+
+    - name: Creare gli utenti
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        shell: "{{ item.shell }}"
+        group: "{{ item.group }}"
+        home: "{{ item.home }}"
+        state: present
+        create_home: yes
+      loop: "{{ users }}"
