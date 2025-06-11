@@ -17,6 +17,6 @@ Questo progetto include due playbook Ansible:
 
 ## Esecuzione
 ```bash
-ansible-playbook install_packages.yml
-ansible-playbook create_users.yml
+ansible-playbook lista_pacchett.yml
+ansible-playbook gruppi_dizionari.yml
 ```
