@@ -1,0 +1,199 @@
+- name: Step 1 - Installazione Docker
+  hosts: all
+  become: yes
+
+  vars:
+    vault_secrets: "{{ lookup('ansible.builtin.unvault', 'vault.yml') | from_yaml }}"
+    jenkins_user: "{{ vault_secrets.jenkins_user }}"
+    jenkins_password: "{{ vault_secrets.jenkins_password }}"
+
+
+
+
+  tasks:
+
+    - name: Controlla variabili vault
+      debug:
+        msg:
+          - "jenkins_user is {{ jenkins_user }}"
+          - "jenkins_password is {{ jenkins_password }}"
+
+    - name: Installa libreria python3-requests
+      package:
+        name: python3-requests
+        state: present
+    
+    - name: Installa xmllint (libxml2-utils o libxml2)
+      package:
+        name: "{{ 'libxml2-utils' if ansible_os_family == 'Debian' else 'libxml2' }}"
+        state: present
+
+
+    - name: Aggiorna cache dei pacchetti
+      package:
+        update_cache: yes
+
+    - name: Rimuovi podman-docker (previene conflitti con Docker CE)
+      package:
+        name: podman-docker
+        state: absent
+      become: true
+
+
+    - name: Aggiungi il repository Docker
+      shell: |
+        dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+      args:
+        creates: /etc/yum.repos.d/docker-ce.repo
+
+    - name: Installa Docker e i componenti necessari
+      package:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+        state: present
+
+    - name: Avvia e abilita Docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+
+- name: Step 2 - Configurazione rete e container Docker
+  hosts: all
+  become: yes
+  vars:
+    vault_secrets: "{{ lookup('ansible.builtin.unvault', 'vault.yml') | from_yaml }}"
+    jenkins_user: "{{ vault_secrets.jenkins_user }}"
+    jenkins_password: "{{ vault_secrets.jenkins_password }}"
+
+
+  tasks:
+    - name: Crea rete Docker bridge 
+      community.docker.docker_network:
+        name: my_network
+        driver: bridge
+        ipam_config:
+          - subnet: "192.168.168.0/24"
+            gateway: "192.168.168.1"
+            
+
+    - name: Crea volume 
+      community.docker.docker_volume:
+        name: jenkins_data
+
+    - name: Avvia container Jenkins
+      community.docker.docker_container:
+        name: jenkins
+        image: jenkins/jenkins:lts
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "8080:8080"
+          - "50000:50000"
+        volumes:
+          - jenkins_data:/var/jenkins_home
+        networks:
+          - name: my_network
+
+    - name: Pausa 2 min
+      shell: |
+        sleep 2m
+
+    - name: Ottieni crumb e salva cookie
+      shell: |
+        curl -s -u {{ jenkins_user }}:{{ jenkins_password }} -c cookies.txt http://localhost:8080/crumbIssuer/api/json
+      register: crumb_response
+
+    - name: Estrai crumb da risposta JSON
+      set_fact:
+        jenkins_crumb: "{{ (crumb_response.stdout | from_json).crumb }}"
+
+    - name: Genera nuovo token API e salva output
+      shell: |
+        curl -s -X POST -u {{ jenkins_user }}:{{ jenkins_password }} -b cookies.txt \
+        -H "Jenkins-Crumb: {{ jenkins_crumb }}" \
+        -d "newTokenName=ansibletoken" \
+        http://localhost:8080/me/descriptorByName/jenkins.security.ApiTokenProperty/generateNewToken
+      register: token_response
+
+    - name: Estrai valore token
+      set_fact:
+        jenkins_api_token: "{{ (token_response.stdout | from_json).data.tokenValue }}"
+
+
+    - name: Creazione nuovo Agent
+      shell: |
+        curl -X POST -u {{ jenkins_user }}:{{ jenkins_api_token }}   -H "Jenkins-Crumb: $CRUMB"   -H "Content-Type: application/x-www-form-urlencoded"   --data-urlencode "name=jenkins_agent"   --data-urlencode "type=hudson.slaves.DumbSlave"   --data-urlencode "json={
+        \"name\": \"jenkins_agent\",
+        \"nodeDescription\": \"\",
+        \"numExecutors\": \"1\",
+        \"remoteFS\": \"/home/jenkins/agent\",
+        \"labelString\": \"\",
+        \"mode\": \"EXCLUSIVE\",
+        \"\": \"0\"
+        }"  http://localhost:8080/computer/doCreateItem
+    - name: Ottieni file JNLP
+      shell: >
+        curl -s -u {{ jenkins_user }}:{{ jenkins_api_token }} http://localhost:8080/computer/jenkins_agent/jenkins-agent.jnlp
+      register: jnlp_response
+
+    - name: Debug contenuto JNLP
+      debug:
+        var: jnlp_response
+
+
+    - name: Estrai il secret dal JNLP con xmllint (primo argument)
+      shell: echo "{{ jnlp_response.stdout }}" | xmllint --xpath "string(//application-desc/argument[1])" -
+      register: jenkins_secret_response
+
+    - name: Debug JENKINS_SECRET corretto
+      debug:
+        var: jenkins_secret_response.stdout
+
+
+
+    - name: Salva secret in variabile
+      set_fact:
+        JENKINS_SECRET: "{{ jenkins_secret_response.stdout }}"
+
+    - name: Debug JENKINS_SECRET
+      debug:
+        var: jenkins_secret_response.stdout
+
+
+    - name: Install Java in jenkins_agent 
+      shell: |
+         docker exec -t jenkins_agent sh && dnf install java -y &
+
+    - name: Avvia container agent 
+      community.docker.docker_container:
+        name: jenkins_agent
+        image: jenkins/inbound-agent:latest
+        state: started
+        restart_policy: unless-stopped
+        env:
+          JENKINS_URL: http://jenkins:8080
+          JENKINS_SECRET: "{{ jenkins_secret_response.stdout }}"
+          JENKINS_AGENT_NAME: "jenkins_agent"
+        networks:
+          - name: my_network
+
+    - name: Jar 
+      shell: |
+        curl -sO http://localhost:8080/jnlpJars/agent.jar;java -jar agent.jar -url http://localhost:8080/ -secret {{ jenkins_secret_response.stdout }} -name "jenkins_agent" -webSocket -workDir "/home/jenkins/agent" &
+   
+
+
+- name: Installa Vim e Nano nel container Jenkins come root
+  hosts: all
+  become: true
+  tasks:
+    - name: Installa vim e nano nel container jenkins come root via docker exec shell
+      ansible.builtin.shell: >
+        docker exec -i -u root jenkins bash -c "apt-get update && apt-get install -y vim nano"
+
+        
