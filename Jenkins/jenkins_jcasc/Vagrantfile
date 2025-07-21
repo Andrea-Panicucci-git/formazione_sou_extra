@@ -1,0 +1,10 @@
+Vagrant.configure("2") do |config|
+  config.vm.provider "docker" do |d|
+    d.build_dir = "." # dove si trova il tuo Dockerfile
+    d.name = "jenkins-docker"
+    d.remains_running = true
+    d.ports = ["8080:8080"]
+  end
+
+  config.vm.network "forwarded_port", guest: 8080, host: 8081
+end
